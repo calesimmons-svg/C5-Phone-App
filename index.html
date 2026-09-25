@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crew Rest</title>
+<meta name="theme-color" content="#0a0d0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Crew Rest">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rye&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0d0a;
+    --panel:#12160f;
+    --panel-2:#161c13;
+    --border:#3a4030;
+    --amber:#ffb000;
+    --amber-dim:#8a6200;
+    --cyan:#4de8e0;
+    --cyan-dim:#1f6b66;
+    --text:#e8e4d5;
+    --text-dim:#8a8a78;
+    --danger:#ff5c3d;
+    --font:'Share Tech Mono','Courier New',monospace;
+    --tabbar:56px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0;padding:0;height:100%;width:100%;
+    overflow:hidden;overscroll-behavior:none;
+    background:var(--bg);
+  }
+  body{
+    color:var(--text);
+    font-family:var(--font);
+    background:radial-gradient(ellipse at 50% -10%, #1a2013 0%, var(--bg) 60%);
+    -webkit-text-size-adjust:100%;
+  }
+
+  /* ===== pager: two full-screen pages, swipe sideways ===== */
+  .pager{
+    display:flex;
+    width:100vw;
+    height:100%;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scroll-snap-type:x mandatory;
+    overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .pager::-webkit-scrollbar{display:none;}
+  .page{
+    flex:0 0 100vw;
+    width:100vw;
+    height:100%;
+    overflow-y:auto;
+    overflow-x:hidden;
+    scroll-snap-align:start;
+    scroll-snap-stop:always;
+    padding:calc(env(safe-area-inset-top,0px) + 8px) 10px
+            calc(env(safe-area-inset-bottom,0px) + var(--tabbar) + 10px);
+  }
+  .page-inner{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:7px;}
+
+  header{
+    text-align:center;
+    border-bottom:2px solid var(--amber-dim);
+    padding-bottom:5px;
+  }
+  header h1{
+    margin:0;
+    font-size:16px;
+    font-weight:400;
+    letter-spacing:2px;
+    color:var(--amber);
+    text-shadow:0 0 12px rgba(255,176,0,.35);
+  }
+
+  /* ===== clocks ===== */
+  .clocks{display:grid;grid-template-columns:1.15fr 1.15fr .7fr;gap:5px;}
+  .clock{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:5px;
+    padding:5px 4px;
+    text-align:center;
+    min-width:0;
+    overflow:hidden;
+  }
+  .clock .label{font-size:9px;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;white-space:nowrap;}
+  .clock .val{
+    font-size:18px;
+    color:var(--cyan);
+    text-shadow:0 0 8px rgba(77,232,224,.35);
+    margin-top:1px;
+    font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+  }
+  .clock .sub{font-size:9px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+  .tzrow{display:flex;gap:5px;}
+  .tzrow select{
+    flex:1;min-width:0;
+    height:36px;
+    background:#0d100b;
+    border:1px solid var(--border);
+    color:var(--amber);
+    font-family:var(--font);
+    font-size:16px; /* 16px stops iOS zooming on tap */
+    padding:0 8px;
+    border-radius:4px;
+    -webkit-appearance:none;appearance:none;
+  }
+
+  /* ===== buttons ===== */
+  button{
+    font-family:var(--font);
+    background:var(--panel-2);
+    color:var(--text);
+    border:1px solid var(--border);
+    border-radius:4px;
+    font-size:12px;
+    letter-spacing:.5px;
+    padding:0 4px;
+    min-height:36px;
+    cursor:pointer;
+    touch-action:manipulation;
+  }
+  button:active{border-color:var(--cyan);color:var(--cyan);background:#1b2419;}
+  button.ghost{background:transparent;}
+  button:focus-visible,select:focus-visible{outline:2px solid var(--cyan);outline-offset:1px;}
+  .red{color:var(--danger);}
+
+  /* ===== input panels ===== */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:7px 8px 8px;
+  }
+  .phead{
+    display:flex;justify-content:space-between;align-items:baseline;
+    border-bottom:1px solid var(--border);
+    padding-bottom:3px;margin-bottom:6px;
+  }
+  .phead h2{margin:0;font-size:12px;font-weight:400;letter-spacing:1px;text-transform:uppercase;color:var(--amber);}
+  .phead .meta{font-size:10px;color:var(--danger);}
+  .phead .meta.dim{color:var(--text-dim);}
+
+  .pbody{display:grid;grid-template-columns:auto 1fr;gap:7px;align-items:stretch;}
+  .dt{
+    display:flex;flex-direction:column;justify-content:center;
+    background:#0d100b;
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:3px 8px;
+  }
+  .dt:focus-within{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(77,232,224,.15);}
+  .dt .date{font-size:11px;color:var(--text-dim);white-space:nowrap;}
+  .dt .time{display:flex;align-items:center;gap:1px;}
+  .dt input{
+    width:34px;
+    background:transparent;border:none;outline:none;padding:0;
+    font-family:var(--font);
+    font-size:26px;
+    color:var(--amber);
+    text-align:center;
+    -moz-appearance:textfield;
+  }
+  .dt input::-webkit-outer-spin-button,.dt input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .dt .sep{font-size:24px;color:var(--text-dim);}
+  .dt .z{font-size:14px;color:var(--text-dim);margin-left:3px;}
+
+  .btns{display:grid;gap:5px;}
+  .btns.c2{grid-template-columns:1fr 1fr;}
+  .btns.c3{grid-template-columns:1fr 1fr 1fr;}
+  .btns .tall{grid-row:span 2;}
+
+  /* ===== results ===== */
+  .results{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
+  .outcard{
+    background:#0d100b;
+    border:1px solid var(--cyan-dim);
+    border-radius:5px;
+    padding:6px 6px;
+    min-width:0;
+  }
+  .outcard .otitle{font-size:9px;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;white-space:nowrap;}
+  .outcard .oval{font-size:22px;color:var(--cyan);text-shadow:0 0 8px rgba(77,232,224,.3);font-variant-numeric:tabular-nums;}
+  .outcard .osub{font-size:9px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+  /* ===== copy-to-crew ===== */
+  .copybtn{
+    width:100%;
+    min-height:48px !important;
+    background:rgba(255,176,0,.08);
+    border-color:var(--amber-dim);
+    color:var(--amber);
+    font-size:14px !important;
+    letter-spacing:1px;
+  }
+  .copybtn:active{border-color:var(--amber);color:var(--amber);background:rgba(255,176,0,.16);}
+  .copybtn.done{border-color:var(--cyan);color:var(--cyan);background:rgba(77,232,224,.08);}
+
+  /* ===== page 2: TACC reference ===== */
+  .ref h2{
+    margin:0 0 5px;
+    font-size:12px;font-weight:400;
+    letter-spacing:1px;text-transform:uppercase;
+    color:var(--amber);
+    border-bottom:1px solid var(--border);
+    padding-bottom:3px;
+  }
+  .ref h2 .hint{float:right;font-size:10px;letter-spacing:.3px;text-transform:none;color:var(--text-dim);}
+  .ref ul{margin:0;padding-left:15px;font-size:12px;line-height:1.28;}
+  .ref ul.plain{list-style:none;padding-left:0;}
+  .ref li{margin-bottom:2px;}
+  .ref li:last-child{margin-bottom:0;}
+  .ref p{margin:0 0 3px;font-size:12px;color:var(--text-dim);}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+  .shift{display:flex;justify-content:space-between;gap:4px;padding:2px 4px;margin:0 -4px;border-radius:3px;}
+  .shift span:last-child{color:var(--text-dim);}
+  .shift.now{background:rgba(77,232,224,.1);color:var(--cyan);}
+  .shift.now span:last-child{color:var(--cyan);}
+  .shift.now span:first-child::after{content:" ◂ now";font-size:10px;}
+
+  /* taller phones (regular / Pro / Max): give the calc page bigger touch targets */
+  @media (min-height:780px){
+    #pageCalc .page-inner{gap:10px;}
+    #pageCalc button{min-height:44px;font-size:13px;}
+    #pageCalc .tzrow select{height:44px;}
+    #pageCalc .dt input{font-size:32px;width:40px;}
+    #pageCalc .dt .sep{font-size:28px;}
+    #pageCalc .clock .val{font-size:20px;}
+    #pageCalc .outcard .oval{font-size:24px;}
+    #pageCalc .outcard{padding:8px 7px;}
+    #pageCalc .panel{padding:9px 9px 10px;}
+  }
+
+  #pageTacc .page-inner{gap:5px;}
+  #pageTacc .panel{padding:6px 8px 7px;}
+
+
+  /* ===== page 3: TACC destress ===== */
+  #pageGame{overflow:hidden;}
+  #pageGame .page-inner{height:100%;gap:6px;}
+  .hud{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:5px;}
+  .hud .stat{
+    background:var(--panel);border:1px solid var(--border);border-radius:5px;
+    padding:3px 6px;text-align:center;min-width:0;
+  }
+  .hud .stat .label{font-size:9px;letter-spacing:1px;color:var(--text-dim);}
+  .hud .stat .v{font-size:20px;color:var(--cyan);font-variant-numeric:tabular-nums;line-height:1.15;}
+  .hud .stat .v.warn{color:var(--danger);}
+  .hud button{min-width:44px;font-size:18px;padding:0;}
+  .stage{
+    position:relative;flex:1;min-height:0;
+    border:2px solid var(--amber-dim);border-radius:8px;overflow:hidden;
+    background:#1a0d12;
+  }
+  .stage canvas{display:block;width:100%;height:100%;touch-action:none;}
+  .overlay{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+    padding:18px;text-align:center;
+    background:rgba(12,6,10,.74);
+    -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);
+  }
+  .overlay[hidden]{display:none;}
+  .overlay .big{
+    font-family:'Rye',Georgia,serif;
+    font-size:34px;line-height:1.05;color:#ffd23f;
+    text-shadow:3px 3px 0 #b3121f,0 0 18px rgba(255,210,63,.4);
+    letter-spacing:1px;
+  }
+  .overlay .small{font-size:13px;color:var(--text);line-height:1.4;max-width:280px;}
+  .overlay .rank{font-size:15px;color:var(--cyan);}
+  .overlay .score{font-family:'Rye',Georgia,serif;font-size:54px;color:#fff;text-shadow:3px 3px 0 #b3121f;}
+  .overlay button.go{
+    min-height:52px;padding:0 26px;
+    font-family:'Rye',Georgia,serif;font-size:20px;letter-spacing:1px;
+    color:#2a0a0a;background:#ffd23f;border:3px solid #b3121f;border-radius:10px;
+    box-shadow:0 4px 0 #7a0c14;
+  }
+  .overlay button.go:active{transform:translateY(3px);box-shadow:0 1px 0 #7a0c14;color:#2a0a0a;background:#ffe27a;}
+
+  /* ===== tab bar ===== */
+  .tabbar{
+    position:fixed;left:0;right:0;bottom:0;
+    display:grid;grid-template-columns:1fr 1fr 1fr;
+    padding:0 10px env(safe-area-inset-bottom,0px);
+    background:rgba(10,13,10,.92);
+    -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+    border-top:1px solid var(--border);
+    z-index:10;
+  }
+  .tabbar button{
+    height:var(--tabbar);
+    background:transparent;border:none;border-radius:0;
+    color:var(--text-dim);
+    font-size:13px;letter-spacing:1.5px;text-transform:uppercase;
+    border-top:2px solid transparent;
+  }
+  .tabbar button.active{color:var(--amber);border-top-color:var(--amber);}
+</style>
+</head>
+<body>
+
+<main class="pager" id="pager">
+
+  <!-- ================= PAGE 1: MATH ================= -->
+  <section class="page" id="pageCalc" aria-label="Crew rest calculator">
+    <div class="page-inner">
+      <header><h1>🍺 CREW REST / ALERT 🚨</h1></header>
+
+      <div class="clocks">
+        <div class="clock">
+          <div class="label">Local <span id="curLocalOffset" style="color:var(--cyan);"></span></div>
+          <div class="val" id="curLocal">--:--:--</div>
+          <div class="sub" id="curLocalDate">—</div>
+          <div class="sub" id="curLocalTZ">—</div>
+        </div>
+        <div class="clock">
+          <div class="label">Zulu</div>
+          <div class="val" id="curZulu">--:--:--</div>
+          <div class="sub" id="curZuluDate">—</div>
+        </div>
+        <div class="clock">
+          <div class="label">Julian</div>
+          <div class="val" id="curJulian">---</div>
+          <div class="sub">(Zulu)</div>
+        </div>
+      </div>
+
+      <div class="tzrow">
+        <select id="tzSelect" aria-label="Local time zone">
+          <option value="auto">Auto (This Device)</option>
+          <optgroup label="CONUS / Home Station">
+            <option value="-10">Hickam, HI (−10)</option>
+            <option value="-9">Elmendorf, AK (−9)</option>
+            <option value="-8">Travis, CA (−8)</option>
+            <option value="-8">McChord, WA (−8)</option>
+            <option value="-6">Scott, IL — HQ AMC (−6)</option>
+            <option value="-6">San Antonio, TX (−6)</option>
+            <option value="-6">Altus, OK (−6)</option>
+            <option value="-5">Dover, DE (−5)</option>
+            <option value="-5">McGuire, NJ (−5)</option>
+            <option value="-5">Charleston, SC (−5)</option>
+          </optgroup>
+          <optgroup label="Atlantic / Europe">
+            <option value="-4">Thule, Greenland (−4)</option>
+            <option value="0">Lajes, Azores (+0)</option>
+            <option value="0">Mildenhall, UK (+0)</option>
+            <option value="1">Ramstein, Germany (+1)</option>
+            <option value="1">Rota, Spain (+1)</option>
+            <option value="1">Moron, Spain (+1)</option>
+            <option value="1">Sigonella, Italy (+1)</option>
+            <option value="2">Souda Bay, Crete (+2)</option>
+          </optgroup>
+          <optgroup label="Middle East / Africa">
+            <option value="3">Incirlik, Turkey (+3)</option>
+            <option value="3">Al Udeid, Qatar (+3)</option>
+            <option value="3">Bahrain (+3)</option>
+            <option value="3">Ali Al Salem, Kuwait (+3)</option>
+            <option value="3">Lemonnier, Djibouti (+3)</option>
+            <option value="4">Al Dhafra, UAE (+4)</option>
+            <option value="4.5">Bagram, Afghanistan (+4:30)</option>
+          </optgroup>
+          <optgroup label="Indian Ocean / Pacific">
+            <option value="6">Diego Garcia (+6)</option>
+            <option value="9">Osan, South Korea (+9)</option>
+            <option value="9">Yokota, Japan (+9)</option>
+            <option value="9">Misawa, Japan (+9)</option>
+            <option value="9">Kadena, Okinawa (+9)</option>
+            <option value="10">Andersen, Guam (+10)</option>
+            <option value="12">Wake Island (+12)</option>
+            <option value="12">Christchurch, NZ (+12)</option>
+          </optgroup>
+          <optgroup label="All Timezones">
+            <option value="-12">UTC −12</option><option value="-11">UTC −11</option>
+            <option value="-10">UTC −10</option><option value="-9">UTC −9</option>
+            <option value="-8">UTC −8</option><option value="-7">UTC −7</option>
+            <option value="-6">UTC −6</option><option value="-5">UTC −5</option>
+            <option value="-4">UTC −4</option><option value="-3">UTC −3</option>
+            <option value="-2">UTC −2</option><option value="-1">UTC −1</option>
+            <option value="0">UTC +0</option><option value="1">UTC +1</option>
+            <option value="2">UTC +2</option><option value="3">UTC +3</option>
+            <option value="4">UTC +4</option><option value="5">UTC +5</option>
+            <option value="6">UTC +6</option><option value="7">UTC +7</option>
+            <option value="8">UTC +8</option><option value="9">UTC +9</option>
+            <option value="10">UTC +10</option><option value="11">UTC +11</option>
+            <option value="12">UTC +12</option>
+          </optgroup>
+        </select>
+        <button class="ghost" id="tzReset" style="padding:0 12px;">Local</button>
+      </div>
+
+      <section class="panel">
+        <div class="phead"><h2>Entered Crew Rest</h2><span class="meta dim">UTC</span></div>
+        <div class="pbody">
+          <div class="dt">
+            <div class="date" id="restDate">----------</div>
+            <div class="time">
+              <input type="number" inputmode="numeric" pattern="[0-9]*" id="restHH" min="0" max="23" value="00" aria-label="Crew rest hour UTC">
+              <span class="sep">:</span>
+              <input type="number" inputmode="numeric" pattern="[0-9]*" id="restMM" min="0" max="59" value="00" aria-label="Crew rest minute UTC">
+              <span class="z">Z</span>
+            </div>
+          </div>
+          <div class="btns c2">
+            <button class="ghost" id="setNow">Set to Now</button>
+            <button class="ghost" id="roundRest">Round Up</button>
+            <button id="minus15">− 15 MIN</button>
+            <button id="plus15">+ 15 MIN</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="phead"><h2>Alert Time</h2><span class="meta" id="alertDateJulian">Julian ---</span></div>
+        <div class="pbody">
+          <div class="dt">
+            <div class="date" id="alertDate">----------</div>
+            <div class="time">
+              <input type="number" inputmode="numeric" pattern="[0-9]*" id="alertHH" min="0" max="23" value="00" aria-label="Alert hour UTC">
+              <span class="sep">:</span>
+              <input type="number" inputmode="numeric" pattern="[0-9]*" id="alertMM" min="0" max="59" value="00" aria-label="Alert minute UTC">
+              <span class="z">Z</span>
+            </div>
+          </div>
+          <div class="btns c3">
+            <button id="alertMinus60">− 1 HR</button>
+            <button id="alertPlus60">+ 1 HR</button>
+            <button class="ghost" id="alert12hr">12 HR <span class="red">MIN</span></button>
+            <button id="alertMinus15">− 15</button>
+            <button id="alertPlus15">+ 15</button>
+            <button class="ghost" id="alert24hr">24 HR</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="phead"><h2>Take Off Time</h2><span class="meta" id="takeoffDateJulian">Julian ---</span></div>
+        <div class="pbody">
+          <div class="dt">
+            <div class="date" id="takeoffDate">----------</div>
+            <div class="time">
+              <input type="number" inputmode="numeric" pattern="[0-9]*" id="takeoffHH" min="0" max="23" value="00" aria-label="Takeoff hour UTC">
+              <span class="sep">:</span>
+              <input type="number" inputmode="numeric" pattern="[0-9]*" id="takeoffMM" min="0" max="59" value="00" aria-label="Takeoff minute UTC">
+              <span class="z">Z</span>
+            </div>
+          </div>
+          <div class="btns c3">
+            <button id="takeoffMinus60">− 1 HR</button>
+            <button id="takeoffPlus60">+ 1 HR</button>
+            <button class="ghost tall" id="takeoff24hr">24 HR</button>
+            <button id="takeoffMinus15">− 15</button>
+            <button id="takeoffPlus15">+ 15</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="results">
+        <div class="outcard">
+          <div class="otitle">Ground</div>
+          <div class="oval" id="groundOut">--+--</div>
+          <div class="osub">Rest → T/O</div>
+        </div>
+        <div class="outcard">
+          <div class="otitle">Alert L</div>
+          <div class="oval" id="alertL">--:--</div>
+          <div class="osub" id="alertLDate">—</div>
+        </div>
+        <div class="outcard">
+          <div class="otitle">T/O L</div>
+          <div class="oval" id="toL">--:--</div>
+          <div class="osub" id="toLDate">—</div>
+        </div>
+      </div>
+
+      <button class="copybtn" id="copyCrew">Copy to Send to Crew</button>
+    </div>
+  </section>
+
+  <!-- ================= PAGE 2: TACC ================= -->
+  <section class="page" id="pageTacc" aria-label="TACC phone help">
+    <div class="page-inner">
+      <header><h1>📞 TACC PHONE HELP</h1></header>
+
+      <div class="panel ref">
+        <h2>Note Your Last Official Duty</h2>
+        <ul>
+          <li>Offloads can take much longer</li>
+          <li>Min cut is 17 from LDG to TO</li>
+          <li>12 for LFA (from last duty, usually +45)</li>
+        </ul>
+      </div>
+
+      <div class="pair">
+        <div class="panel ref">
+          <h2>TACC Shifts</h2>
+          <div style="font-size:12px;line-height:1.35;">
+            <div class="shift" data-start="12" data-end="20"><span>Day</span><span>12–20z</span></div>
+            <div class="shift" data-start="20" data-end="4"><span>Swing</span><span>20–04z</span></div>
+            <div class="shift" data-start="4" data-end="12"><span>Mid</span><span>04–12z</span></div>
+          </div>
+        </div>
+        <div class="panel ref">
+          <h2>FDPs</h2>
+          <ul class="plain">
+            <li>Basic — 16 hr</li>
+            <li>Basic Aug — 18 hr</li>
+            <li>Augmented — 24 hr</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="panel ref">
+        <h2>Duty Day Leg Requirements</h2>
+        <ul class="plain">
+          <li>Basic Day — less than below</li>
+          <li>Basic Aug Day — 1x5hr or 2x3hrs</li>
+          <li>Augmented Day — 1x6hr or 2x4hrs</li>
+          <li>Can swap upload for 1 leg ^</li>
+        </ul>
+      </div>
+
+      <div class="panel ref">
+        <h2>Overfly</h2>
+        <p>Call bases involved.</p>
+        <ul>
+          <li>Saves time on a late trip</li>
+          <li>Gets the airplane home early</li>
+          <li>Bad base for support, cold etc.</li>
+        </ul>
+      </div>
+
+      <div class="panel ref">
+        <h2>To Justify a CECR <span class="hint">3 hr max w/o the senior</span></h2>
+        <ul>
+          <li>Hot meals. Look up times of restaurants, Shoppette etc. Limited amount of actual food.</li>
+          <li>Quiet hours 202v3 reg, should approve CECR de-positioning legs.</li>
+          <li>Home for the RDAP (4 am Travis time, not midnight)</li>
+          <li>Bottom of circadian rhythm — use their G2 products against them.</li>
+          <li>We took mins this whole trip? Our guys are exhausted.</li>
+          <li>We called for cargo, they won't have any for us — we don't need the extra time for an upload.</li>
+          <li>I'm on a checkride, please sir.</li>
+          <li>There's about to be a crew mutiny.</li>
+          <li>We have XXX hours of slop in our schedule for quiet hours tomorrow.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PAGE 3: DESTRESS ================= -->
+  <section class="page" id="pageGame" aria-label="TACC Destress game">
+    <div class="page-inner">
+      <header><h1>🎪 TACC DESTRESS 🤡</h1></header>
+      <div class="hud">
+        <div class="stat"><div class="label">SCORE</div><div class="v" id="gScore">0</div></div>
+        <div class="stat"><div class="label">TIME</div><div class="v" id="gTime">45</div></div>
+        <div class="stat"><div class="label">BEST</div><div class="v" id="gBest">0</div></div>
+        <button class="ghost" id="gMute" aria-label="Sound on/off">🔊</button>
+      </div>
+      <div class="stage" id="gStage">
+        <canvas id="gCanvas"></canvas>
+        <div class="overlay" id="gStart">
+          <div class="big">TACC<br>DESTRESS</div>
+          <div class="small">They denied the CECR. Take it out on the clowns.<br>Tap to shoot. 45 seconds. Gold clowns are worth 50.</div>
+          <button class="go" id="gGo">STEP RIGHT UP</button>
+        </div>
+        <div class="overlay" id="gPause" hidden>
+          <div class="big">ON HOLD</div>
+          <div class="small">Your call is important to us.</div>
+          <button class="go" id="gResume">RESUME</button>
+        </div>
+        <div class="overlay" id="gEnd" hidden>
+          <div class="small">FINAL SCORE</div>
+          <div class="score" id="gFinal">0</div>
+          <div class="rank" id="gRank">—</div>
+          <div class="small" id="gNewBest"></div>
+          <button class="go" id="gAgain">PLAY AGAIN</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="tabbar" aria-label="Pages">
+  <button class="active" data-page="0">Calc</button>
+  <button data-page="1">TACC</button>
+  <button data-page="2">Destress</button>
+</nav>
+
+<script>
+(function(){
+
+/* ---------- pager / tabs ---------- */
+const pager = document.getElementById('pager');
+const tabs = document.querySelectorAll('.tabbar button');
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  const i = +t.dataset.page;
+  pager.scrollTo({left:i*pager.clientWidth, behavior:'smooth'});
+}));
+function syncTabs(){
+  const i = Math.round(pager.scrollLeft / pager.clientWidth);
+  tabs.forEach((t,j)=>t.classList.toggle('active', j===i));
+}
+pager.addEventListener('scroll', syncTabs, {passive:true});
+window.addEventListener('resize', ()=>{
+  // keep the current page aligned after rotation
+  const i = [...tabs].findIndex(t=>t.classList.contains('active'));
+  pager.scrollLeft = i*pager.clientWidth;
+});
+
+/* ---------- helpers ---------- */
+function pad(n){return String(n).padStart(2,'0');}
+function julianDay(date){
+  const y = date.getUTCFullYear();
+  const start = Date.UTC(y,0,0);
+  const diff = Date.UTC(y, date.getUTCMonth(), date.getUTCDate()) - start;
+  return Math.round(diff / 86400000);
+}
+function fmtHM(date){return pad(date.getUTCHours())+':'+pad(date.getUTCMinutes());}
+function fmtDateUTC(date){return date.getUTCFullYear()+'-'+pad(date.getUTCMonth()+1)+'-'+pad(date.getUTCDate());}
+
+/* ---------- live clocks ---------- */
+let manualOffset = null; // null = device time zone
+
+function getEffectiveOffsetHours(){
+  if (manualOffset !== null) return manualOffset;
+  return -(new Date().getTimezoneOffset()/60);
+}
+function updateTZ(){
+  const el = document.getElementById('curLocalTZ');
+  if (manualOffset !== null){
+    const sel = document.getElementById('tzSelect');
+    el.textContent = sel.options[sel.selectedIndex].textContent;
+    return;
+  }
+  try{ el.textContent = Intl.DateTimeFormat().resolvedOptions().timeZone.replace(/_/g,' '); }
+  catch(e){ el.textContent = 'unknown'; }
+}
+function markShift(now){
+  const h = now.getUTCHours();
+  document.querySelectorAll('.shift').forEach(s=>{
+    const a = +s.dataset.start, b = +s.dataset.end;
+    const on = a < b ? (h >= a && h < b) : (h >= a || h < b);
+    s.classList.toggle('now', on);
+  });
+}
+function tickClock(){
+  const now = new Date();
+  const offHrs = getEffectiveOffsetHours();
+  const L = new Date(now.getTime() + offHrs*3600000);
+  document.getElementById('curLocal').textContent = pad(L.getUTCHours())+':'+pad(L.getUTCMinutes())+':'+pad(L.getUTCSeconds());
+  document.getElementById('curLocalDate').textContent = fmtDateUTC(L);
+  document.getElementById('curZulu').textContent = pad(now.getUTCHours())+':'+pad(now.getUTCMinutes())+':'+pad(now.getUTCSeconds());
+  document.getElementById('curZuluDate').textContent = fmtDateUTC(now)+'Z';
+  document.getElementById('curJulian').textContent = julianDay(now);
+  const sign = offHrs >= 0 ? '+' : '−';
+  document.getElementById('curLocalOffset').textContent = '('+sign+Math.abs(offHrs)+')';
+  if (manualOffset === null) updateTZ();
+  markShift(now);
+}
+setInterval(tickClock,1000);
+tickClock();
+updateTZ();
+
+document.getElementById('tzSelect').addEventListener('change', e=>{
+  manualOffset = (e.target.value === 'auto') ? null : parseFloat(e.target.value);
+  updateTZ(); tickClock(); compute();
+});
+document.getElementById('tzReset').addEventListener('click', ()=>{
+  document.getElementById('tzSelect').value = 'auto';
+  manualOffset = null;
+  updateTZ(); tickClock(); compute();
+});
+
+/* ---------- inputs ---------- */
+const restDate = document.getElementById('restDate');
+const restHH = document.getElementById('restHH');
+const restMM = document.getElementById('restMM');
+const alertDate = document.getElementById('alertDate');
+const alertHH = document.getElementById('alertHH');
+const alertMM = document.getElementById('alertMM');
+const takeoffDate = document.getElementById('takeoffDate');
+const takeoffHH = document.getElementById('takeoffHH');
+const takeoffMM = document.getElementById('takeoffMM');
+
+function initDefaults(){
+  const now = new Date();
+  setRestFromDateObj(now);
+  const alertDefault = new Date(now.getTime() + 12*3600000);            // alert = now + 12h
+  setAlertFromDateObj(alertDefault);
+  setTakeoffFromDateObj(new Date(alertDefault.getTime() + (4*60+15)*60000)); // T/O = alert + 4+15
+}
+function readDT(dateEl, hhEl, mmEl){
+  const [y,m,d] = dateEl.textContent.split('-').map(Number);
+  const hh = parseInt(hhEl.value)||0, mm = parseInt(mmEl.value)||0;
+  return new Date(Date.UTC(y, m-1, d, hh, mm, 0));
+}
+function writeDT(dt, dateEl, hhEl, mmEl){
+  dateEl.textContent = fmtDateUTC(dt);
+  hhEl.value = pad(dt.getUTCHours());
+  mmEl.value = pad(dt.getUTCMinutes());
+}
+const getRestDateObj    = ()=>readDT(restDate, restHH, restMM);
+const getAlertDateObj   = ()=>readDT(alertDate, alertHH, alertMM);
+const getTakeoffDateObj = ()=>readDT(takeoffDate, takeoffHH, takeoffMM);
+function setRestFromDateObj(dt){ writeDT(dt, restDate, restHH, restMM); }
+function setAlertFromDateObj(dt){ writeDT(dt, alertDate, alertHH, alertMM); }
+function setTakeoffFromDateObj(dt){ writeDT(dt, takeoffDate, takeoffHH, takeoffMM); }
+
+initDefaults();
+
+document.getElementById('setNow').addEventListener('click', ()=>{
+  setRestFromDateObj(new Date());
+  compute();
+});
+document.getElementById('roundRest').addEventListener('click', ()=>{
+  const dt = getRestDateObj();
+  if (isNaN(dt.getTime())) return;
+  dt.setUTCMinutes(Math.ceil(dt.getUTCMinutes()/5)*5, 0, 0); // always forward, never back
+  setRestFromDateObj(dt);
+  compute();
+});
+
+function shiftAll(minutes){
+  const rest = getRestDateObj(), alert = getAlertDateObj(), takeoff = getTakeoffDateObj();
+  if ([rest,alert,takeoff].some(d=>isNaN(d.getTime()))) return;
+  [rest,alert,takeoff].forEach(d=>d.setUTCMinutes(d.getUTCMinutes()+minutes));
+  setRestFromDateObj(rest); setAlertFromDateObj(alert); setTakeoffFromDateObj(takeoff);
+  compute();
+}
+function shiftAlertTakeoff(minutes){
+  const alert = getAlertDateObj(), takeoff = getTakeoffDateObj();
+  if ([alert,takeoff].some(d=>isNaN(d.getTime()))) return;
+  [alert,takeoff].forEach(d=>d.setUTCMinutes(d.getUTCMinutes()+minutes));
+  setAlertFromDateObj(alert); setTakeoffFromDateObj(takeoff);
+  compute();
+}
+const on = (id,fn)=>document.getElementById(id).addEventListener('click',fn);
+on('plus15',        ()=>shiftAll(15));
+on('minus15',       ()=>shiftAll(-15));
+on('alertPlus15',   ()=>shiftAlertTakeoff(15));
+on('alertMinus15',  ()=>shiftAlertTakeoff(-15));
+on('takeoffPlus15', ()=>shiftAlertTakeoff(15));
+on('takeoffMinus15',()=>shiftAlertTakeoff(-15));
+on('alertPlus60',   ()=>shiftAlertTakeoff(60));
+on('alertMinus60',  ()=>shiftAlertTakeoff(-60));
+on('takeoffPlus60', ()=>shiftAlertTakeoff(60));
+on('takeoffMinus60',()=>shiftAlertTakeoff(-60));
+
+function moveAlertTakeoffTo(targetDate, anchorIsAlert){
+  const anchor = anchorIsAlert ? getAlertDateObj() : getTakeoffDateObj();
+  const alert = getAlertDateObj(), takeoff = getTakeoffDateObj();
+  if ([anchor,alert,takeoff].some(d=>isNaN(d.getTime()))) return;
+  const delta = targetDate.getTime() - anchor.getTime();
+  setAlertFromDateObj(new Date(alert.getTime() + delta));
+  setTakeoffFromDateObj(new Date(takeoff.getTime() + delta));
+  compute();
+}
+on('alert12hr',  ()=>{ const r=getRestDateObj(); if(!isNaN(r)) moveAlertTakeoffTo(new Date(r.getTime()+12*3600000), true); });
+on('alert24hr',  ()=>{ const r=getRestDateObj(); if(!isNaN(r)) moveAlertTakeoffTo(new Date(r.getTime()+24*3600000), true); });
+on('takeoff24hr',()=>{ const r=getRestDateObj(); if(!isNaN(r)) moveAlertTakeoffTo(new Date(r.getTime()+24*3600000), false); });
+
+const timeInputs = [restHH,restMM,alertHH,alertMM,takeoffHH,takeoffMM];
+timeInputs.forEach(el=>{
+  el.addEventListener('input', compute);
+  el.addEventListener('change', compute);
+  el.addEventListener('focus', ()=>el.select());
+  el.addEventListener('blur', ()=>{ if(el.value !== '') el.value = pad(parseInt(el.value)||0); });
+});
+
+/* ---------- results ---------- */
+function toLocalDisplay(dtUTC){ return new Date(dtUTC.getTime() + getEffectiveOffsetHours()*3600000); }
+function fmtDur(ms){
+  const totalMin = Math.round(ms/60000);
+  return Math.floor(totalMin/60)+'+'+pad(totalMin%60);
+}
+function compute(){
+  const rest = getRestDateObj(), alert = getAlertDateObj(), takeoff = getTakeoffDateObj();
+  if ([rest,alert,takeoff].some(d=>isNaN(d.getTime()))) return;
+  const alertL = toLocalDisplay(alert), toL = toLocalDisplay(takeoff);
+  document.getElementById('alertDateJulian').textContent   = 'Julian '+julianDay(alert);
+  document.getElementById('takeoffDateJulian').textContent = 'Julian '+julianDay(takeoff);
+  document.getElementById('groundOut').textContent = fmtDur(takeoff.getTime() - rest.getTime());
+  document.getElementById('alertL').textContent     = fmtHM(alertL);
+  document.getElementById('alertLDate').textContent = fmtDateUTC(alertL);
+  document.getElementById('toL').textContent        = fmtHM(toL);
+  document.getElementById('toLDate').textContent    = fmtDateUTC(toL);
+}
+compute();
+
+/* ---------- copy to send to crew ---------- */
+function crewMessage(){
+  const alert = getAlertDateObj(), takeoff = getTakeoffDateObj();
+  const hhmm = d => pad(d.getUTCHours())+pad(d.getUTCMinutes());
+  return 'Setup for tomorrow.\n' +
+         'Alert - ' + hhmm(toLocalDisplay(alert)) + 'L\n' +
+         'Bus +30\n' +
+         'Takeoff - ' + hhmm(toLocalDisplay(takeoff)) + 'L/(' + hhmm(takeoff) + 'Z)';
+}
+function fallbackCopy(text){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly','');
+  ta.style.position='fixed'; ta.style.top='-1000px'; ta.style.fontSize='16px';
+  document.body.appendChild(ta);
+  ta.select(); ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try{ ok = document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(ta);
+  return ok;
+}
+const copyBtn = document.getElementById('copyCrew');
+let copyTimer;
+function flash(label, ok){
+  copyBtn.textContent = label;
+  copyBtn.classList.toggle('done', ok);
+  clearTimeout(copyTimer);
+  copyTimer = setTimeout(()=>{ copyBtn.textContent='Copy to Send to Crew'; copyBtn.classList.remove('done'); }, 1800);
+}
+copyBtn.addEventListener('click', async ()=>{
+  timeInputs.forEach(el=>el.blur());
+  compute();
+  const text = crewMessage();
+  try{
+    await navigator.clipboard.writeText(text);
+    flash('Copied ✓', true);
+  }catch(e){
+    if (fallbackCopy(text)) flash('Copied ✓', true);
+    else { flash('Copy failed', false); window.prompt('Copy this message:', text); }
+  }
+});
+
+})();
+</script>
+
+<script>
+/* ================= TACC DESTRESS: carnival clown shooting gallery ================= */
+(function(){
+const stage = document.getElementById('gStage');
+const cv = document.getElementById('gCanvas');
+const ctx = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+const elScore=$('gScore'), elTime=$('gTime'), elBest=$('gBest'), elMute=$('gMute');
+const ovStart=$('gStart'), ovPause=$('gPause'), ovEnd=$('gEnd');
+
+const ROUND = 45;
+const LABELS = ['NO CECR','DENIED','MIN REST','ON HOLD','17 HR','NO OVFLY','CALL BACK','BASIC DAY','SLIPPED','NO CARGO','12 HR','HOLD 1'];
+const HATS = ['#e63946','#3a86ff','#8338ec','#2a9d8f','#fb5607'];
+const HAIR = ['#ff7f11','#9ef01a','#00d5ff','#ff4fa3','#ffd23f'];
+const WORDS = ['POP!','BAM!','HONK!','ZAP!','WHAM!'];
+
+let W=0,H=0,dpr=1,R=24;
+let rows=[], fx=[], shots=[];
+let state='attract';   // attract | play | pause | end
+let score=0, timeLeft=ROUND, elapsed=0, streak=0;
+let visible=false, raf=0, last=0, clock=0;
+let muted=false, best=0;
+
+try{ best = +localStorage.getItem('taccDestressBest') || 0; muted = localStorage.getItem('taccDestressMute')==='1'; }catch(e){}
+elBest.textContent=best; elMute.textContent = muted ? '🔇' : '🔊';
+
+/* ---------- layout ---------- */
+function resize(){
+  const r = stage.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  W=r.width; H=r.height; dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  R = Math.max(16, Math.min(W*0.078, H*0.052));
+  const ys=[0.41,0.665,0.915];
+  const old=rows;
+  rows = ys.map((f,i)=>({
+    y:H*f, dir: i%2 ? -1 : 1, mult:[0.85,1.05,1.25][i],
+    targets: old[i] ? old[i].targets : [], cool: Math.random()*0.8
+  }));
+}
+new ResizeObserver(resize).observe(stage);
+
+/* ---------- sound (WebAudio, no files) ---------- */
+let ac=null;
+function audio(){
+  if (muted) return null;
+  try{
+    if(!ac) ac = new (window.AudioContext||window.webkitAudioContext)();
+    if(ac.state==='suspended') ac.resume();
+  }catch(e){ return null; }
+  return ac;
+}
+function tone(f1,f2,dur,type,vol,delay){
+  const a=audio(); if(!a) return;
+  const t=a.currentTime+(delay||0);
+  const o=a.createOscillator(), g=a.createGain();
+  o.type=type||'square';
+  o.frequency.setValueAtTime(f1,t);
+  if(f2) o.frequency.exponentialRampToValueAtTime(f2,t+dur);
+  g.gain.setValueAtTime(vol||0.08,t);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t+dur+0.02);
+}
+function sndShot(){
+  const a=audio(); if(!a) return;
+  const len=Math.floor(a.sampleRate*0.07), buf=a.createBuffer(1,len,a.sampleRate), d=buf.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);
+  const src=a.createBufferSource(), f=a.createBiquadFilter(), g=a.createGain();
+  src.buffer=buf; f.type='bandpass'; f.frequency.value=1800; g.gain.value=0.35;
+  src.connect(f).connect(g).connect(a.destination); src.start();
+}
+function sndHonk(){ tone(330,300,0.16,'sawtooth',0.07); tone(415,380,0.16,'sawtooth',0.05); }
+function sndGold(){ [784,988,1175,1568].forEach((f,i)=>tone(f,0,0.12,'square',0.06,i*0.06)); }
+function sndEnd(){ [523,659,784,1046].forEach((f,i)=>tone(f,0,0.35,'triangle',0.09,i*0.12)); }
+
+elMute.addEventListener('click',()=>{
+  muted=!muted; elMute.textContent = muted ? '🔇' : '🔊';
+  try{ localStorage.setItem('taccDestressMute', muted?'1':'0'); }catch(e){}
+});
+
+/* ---------- targets ---------- */
+function speedFactor(){ return state==='play' ? 1 + (elapsed/ROUND)*0.9 : 0.7; }
+function spawn(row){
+  const gold = state==='play' && Math.random() < 0.12;
+  row.targets.push({
+    x: row.dir>0 ? -R*1.6 : W+R*1.6,
+    gold, label: gold ? 'CECR ✓' : LABELS[(Math.random()*LABELS.length)|0],
+    hat: gold ? '#ffd23f' : HATS[(Math.random()*HATS.length)|0],
+    hair: HAIR[(Math.random()*HAIR.length)|0],
+    s: gold ? 0.82 : 1, spd: gold ? 1.7 : 1,
+    up:true, flip:1, bob:Math.random()*6.28
+  });
+}
+function update(dt){
+  const sf = speedFactor();
+  rows.forEach(row=>{
+    const base = W*0.17*row.mult*sf;
+    row.targets.forEach(t=>{
+      t.x += row.dir*base*t.spd*dt;
+      t.bob += dt*4;
+      if(!t.up) t.flip -= dt*4.5;
+    });
+    row.targets = row.targets.filter(t=> t.flip>0 && t.x>-R*3 && t.x<W+R*3);
+    row.cool -= dt*sf;
+    const lastT = row.targets[row.targets.length-1];
+    const gapOK = !lastT || (row.dir>0 ? lastT.x > R*1.6 : lastT.x < W-R*1.6);
+    if(row.cool<=0 && gapOK){ spawn(row); row.cool = 0.55 + Math.random()*0.9; }
+  });
+  fx.forEach(f=>f.t+=dt); fx = fx.filter(f=>f.t<0.7);
+  shots.forEach(s=>s.t+=dt); shots = shots.filter(s=>s.t<0.25);
+
+  if(state==='play'){
+    elapsed += dt; timeLeft = Math.max(0, ROUND-elapsed);
+    const shown = Math.ceil(timeLeft);
+    if(elTime.textContent != shown){ elTime.textContent = shown; elTime.classList.toggle('warn', shown<=10); }
+    if(timeLeft<=0) endRound();
+  }
+}
+
+/* ---------- drawing ---------- */
+function drawBooth(){
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#3b0f1c'); g.addColorStop(1,'#12060b');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  // back wall stripes
+  const sw=W/12;
+  for(let i=0;i<12;i+=2){ ctx.fillStyle='rgba(255,255,255,.025)'; ctx.fillRect(i*sw,0,sw,H); }
+  // awning
+  const ah=Math.max(34,H*0.085), n=10, w=W/n;
+  for(let i=0;i<n;i++){
+    ctx.fillStyle = i%2 ? '#f4efe6' : '#c1121f';
+    ctx.fillRect(i*w,0,w,ah);
+    ctx.beginPath(); ctx.arc(i*w+w/2, ah, w/2, 0, Math.PI); ctx.fill();
+  }
+  ctx.fillStyle='rgba(0,0,0,.25)'; ctx.fillRect(0,ah-3,W,3);
+  // bulbs
+  const by = ah + w/2 + 8, gap=22, blink = Math.floor(clock*3)%2;
+  for(let x=gap/2, i=0; x<W; x+=gap, i++){
+    const on = (i%2)===blink;
+    ctx.beginPath(); ctx.arc(x,by,3.5,0,6.283);
+    ctx.fillStyle = on ? '#ffe28a' : '#6b5520';
+    if(on){ ctx.shadowColor='#ffd23f'; ctx.shadowBlur=10; }
+    ctx.fill(); ctx.shadowBlur=0;
+  }
+}
+function drawShelf(y){
+  const h=R*0.5;
+  ctx.fillStyle='#5a3218'; ctx.fillRect(0,y,W,h);
+  ctx.fillStyle='#8a5530'; ctx.fillRect(0,y,W,3);
+  ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fillRect(0,y+h,W,4);
+  ctx.strokeStyle='rgba(0,0,0,.18)'; ctx.lineWidth=1;
+  for(let x=0;x<W;x+=R*1.8){ ctx.beginPath(); ctx.moveTo(x,y+5); ctx.lineTo(x,y+h); ctx.stroke(); }
+}
+function rr(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function drawClown(t, baseY){
+  const r = R*t.s, cy = -R*2.35 + Math.sin(t.bob)*r*0.06, hit=!t.up;
+  ctx.save(); ctx.translate(t.x, baseY); ctx.scale(1, Math.max(0.001,t.flip));
+  // stick
+  ctx.fillStyle='#7a4a22'; ctx.fillRect(-r*0.12, cy+r*0.9, r*0.24, -cy-r*0.9);
+  // sign
+  rr(-R*1.05, -R*1.22, R*2.1, R*0.6, 4);
+  ctx.fillStyle = t.gold ? '#ffe7a0' : '#f4e6c3'; ctx.fill();
+  ctx.strokeStyle='#7a4a22'; ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle = t.gold ? '#1f7a3a' : '#b0201a';
+  ctx.font = 'bold '+Math.round(R*0.3)+'px "Share Tech Mono","Courier New",monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(t.label, 0, -R*0.92);
+  // ruffle collar
+  for(let i=-3;i<=3;i++){
+    ctx.beginPath(); ctx.arc(i*r*0.26, cy+r*0.95, r*0.2, 0, 6.283);
+    ctx.fillStyle = i%2 ? '#ffffff' : t.hat; ctx.fill();
+  }
+  // hair tufts
+  ctx.fillStyle=t.hair;
+  [[0.95,-0.1],[0.78,-0.55],[1.02,0.32]].forEach(([dx,dy])=>{
+    [-1,1].forEach(sd=>{ ctx.beginPath(); ctx.arc(sd*dx*r, cy+dy*r, r*0.38, 0, 6.283); ctx.fill(); });
+  });
+  // face
+  ctx.beginPath(); ctx.arc(0,cy,r,0,6.283);
+  ctx.fillStyle='#fff6ea'; ctx.fill(); ctx.strokeStyle='#2a1a14'; ctx.lineWidth=1.5; ctx.stroke();
+  // eyes
+  const ex=r*0.36, ey=cy-r*0.22;
+  if(hit){
+    ctx.strokeStyle='#222'; ctx.lineWidth=r*0.1; ctx.lineCap='round';
+    [-1,1].forEach(sd=>{ const x=sd*ex, s=r*0.14;
+      ctx.beginPath(); ctx.moveTo(x-s,ey-s); ctx.lineTo(x+s,ey+s); ctx.moveTo(x+s,ey-s); ctx.lineTo(x-s,ey+s); ctx.stroke(); });
+  } else {
+    [-1,1].forEach(sd=>{ const x=sd*ex;
+      ctx.beginPath(); ctx.moveTo(x,ey-r*0.3); ctx.lineTo(x+r*0.15,ey); ctx.lineTo(x,ey+r*0.3); ctx.lineTo(x-r*0.15,ey); ctx.closePath();
+      ctx.fillStyle='#3a86ff'; ctx.fill();
+      ctx.beginPath(); ctx.arc(x,ey,r*0.08,0,6.283); ctx.fillStyle='#111'; ctx.fill(); });
+  }
+  // nose
+  ctx.beginPath(); ctx.arc(0,cy+r*0.1,r*0.2,0,6.283); ctx.fillStyle='#e0101f'; ctx.fill();
+  ctx.beginPath(); ctx.arc(-r*0.06,cy+r*0.03,r*0.06,0,6.283); ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fill();
+  // mouth
+  ctx.strokeStyle='#d0101c'; ctx.lineWidth=r*0.13; ctx.lineCap='round';
+  ctx.beginPath();
+  if(hit) ctx.arc(0,cy+r*0.55,r*0.14,0,6.283); else ctx.arc(0,cy+r*0.22,r*0.5,0.18*Math.PI,0.82*Math.PI);
+  ctx.stroke();
+  // hat
+  ctx.beginPath(); ctx.moveTo(-r*0.55,cy-r*0.78); ctx.lineTo(r*0.5,cy-r*0.84); ctx.lineTo(r*0.2,cy-r*1.95); ctx.closePath();
+  ctx.fillStyle=t.hat; ctx.fill(); ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.beginPath(); ctx.arc(r*0.2,cy-r*1.95,r*0.15,0,6.283); ctx.fillStyle=t.gold?'#fff':'#ffffff'; ctx.fill();
+  if(t.gold){ ctx.fillStyle='#b3121f'; ctx.font='bold '+Math.round(r*0.45)+'px sans-serif'; ctx.fillText('★',0,cy-r*1.2); }
+  ctx.restore();
+}
+function starPath(x,y,ro,ri,n){
+  ctx.beginPath();
+  for(let i=0;i<n*2;i++){ const a=i*Math.PI/n - Math.PI/2, rad=i%2?ri:ro; ctx.lineTo(x+Math.cos(a)*rad, y+Math.sin(a)*rad); }
+  ctx.closePath();
+}
+function drawFx(){
+  fx.forEach(f=>{
+    const p=f.t/0.7, a=1-p;
+    ctx.save(); ctx.globalAlpha=Math.max(0,a);
+    if(f.kind==='burst'){
+      const sc = 0.6 + Math.min(1,f.t*8)*0.6;
+      starPath(f.x,f.y,R*1.3*sc,R*0.8*sc,11);
+      ctx.fillStyle='#ffd23f'; ctx.fill(); ctx.lineWidth=3; ctx.strokeStyle='#b3121f'; ctx.stroke();
+      ctx.fillStyle='#b3121f'; ctx.font=Math.round(R*0.55*sc)+'px Rye, Georgia, serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(f.word,f.x,f.y+1);
+    } else if(f.kind==='pts'){
+      ctx.fillStyle=f.color; ctx.font='bold '+Math.round(R*0.6)+'px "Share Tech Mono",monospace';
+      ctx.textAlign='center'; ctx.strokeStyle='rgba(0,0,0,.7)'; ctx.lineWidth=3;
+      ctx.strokeText(f.text,f.x,f.y-p*R*2); ctx.fillText(f.text,f.x,f.y-p*R*2);
+    } else if(f.kind==='miss'){
+      ctx.beginPath(); ctx.arc(f.x,f.y,4+p*14,0,6.283); ctx.strokeStyle='rgba(255,255,255,.6)'; ctx.lineWidth=2; ctx.stroke();
+    }
+    ctx.restore();
+  });
+  shots.forEach(s=>{
+    const a=1-s.t/0.25; ctx.save(); ctx.globalAlpha=a; ctx.strokeStyle='#4de8e0'; ctx.lineWidth=2;
+    const r=10+s.t*30; ctx.beginPath(); ctx.arc(s.x,s.y,r,0,6.283);
+    ctx.moveTo(s.x-r-6,s.y); ctx.lineTo(s.x-r+4,s.y); ctx.moveTo(s.x+r-4,s.y); ctx.lineTo(s.x+r+6,s.y);
+    ctx.moveTo(s.x,s.y-r-6); ctx.lineTo(s.x,s.y-r+4); ctx.moveTo(s.x,s.y+r-4); ctx.lineTo(s.x,s.y+r+6);
+    ctx.stroke(); ctx.restore();
+  });
+}
+function draw(){
+  if(!W) return;
+  drawBooth();
+  rows.forEach(row=>{ row.targets.forEach(t=>drawClown(t,row.y)); drawShelf(row.y); });
+  drawFx();
+}
+
+/* ---------- loop ---------- */
+function frame(ts){
+  const dt = Math.min(0.05, (ts-last)/1000 || 0); last=ts; clock+=dt;
+  if(state!=='pause') update(dt);
+  draw();
+  raf = requestAnimationFrame(frame);
+}
+function startLoop(){ if(!raf){ last=performance.now(); raf=requestAnimationFrame(frame); } }
+function stopLoop(){ cancelAnimationFrame(raf); raf=0; }
+
+/* ---------- shooting ---------- */
+cv.addEventListener('pointerdown', e=>{
+  if(state!=='play') return;
+  e.preventDefault();
+  const b=cv.getBoundingClientRect(), x=e.clientX-b.left, y=e.clientY-b.top;
+  shots.push({x,y,t:0}); sndShot();
+  for(let i=rows.length-1;i>=0;i--){
+    const row=rows[i];
+    for(let j=row.targets.length-1;j>=0;j--){
+      const t=row.targets[j]; if(!t.up) continue;
+      const r=R*t.s, cy=row.y-R*2.35;
+      const inFace = Math.hypot(x-t.x, y-cy) < r*1.3;
+      const inSign = Math.abs(x-t.x)<R*1.05 && y>row.y-R*1.25 && y<row.y-R*0.6;
+      if(inFace||inSign){
+        t.up=false; streak++;
+        const bonus = streak>=5 ? Math.min(20, Math.floor(streak/5)*5) : 0;
+        const pts = (t.gold?50:10) + bonus;
+        score += pts; elScore.textContent=score;
+        fx.push({kind:'burst',x:t.x,y:cy,t:0,word:t.gold?'CECR!':WORDS[(Math.random()*WORDS.length)|0]});
+        fx.push({kind:'pts',x:t.x,y:cy-r*1.3,t:0,text:'+'+pts+(bonus?' 🔥':''),color:t.gold?'#ffd23f':'#4de8e0'});
+        t.gold ? sndGold() : sndHonk();
+        if(navigator.vibrate) navigator.vibrate(12);
+        return;
+      }
+    }
+  }
+  streak=0; fx.push({kind:'miss',x,y,t:0});
+});
+
+/* ---------- round control ---------- */
+function startRound(){
+  audio();
+  score=0; elapsed=0; timeLeft=ROUND; streak=0;
+  elScore.textContent='0'; elTime.textContent=ROUND; elTime.classList.remove('warn');
+  rows.forEach(r=>{ r.targets=[]; r.cool=Math.random()*0.3; });
+  fx=[]; shots=[];
+  ovStart.hidden=true; ovEnd.hidden=true; ovPause.hidden=true;
+  state='play';
+}
+function rankFor(s){
+  if(s<100) return 'Still on hold with TACC';
+  if(s<250) return 'Got the CECR approved';
+  if(s<400) return 'Overflew the bad base';
+  if(s<600) return 'Beers with the boys';
+  return 'Crew mutiny ringleader';
+}
+function endRound(){
+  state='end'; sndEnd();
+  $('gFinal').textContent=score; $('gRank').textContent=rankFor(score);
+  if(score>best){
+    best=score; elBest.textContent=best; $('gNewBest').textContent='★ NEW BEST ★';
+    try{ localStorage.setItem('taccDestressBest', best); }catch(e){}
+  } else $('gNewBest').textContent='';
+  ovEnd.hidden=false;
+}
+function pause(){ if(state==='play'){ state='pause'; ovPause.hidden=false; } }
+function resume(){ if(state==='pause'){ audio(); state='play'; ovPause.hidden=true; last=performance.now(); } }
+
+$('gGo').addEventListener('click', startRound);
+$('gAgain').addEventListener('click', startRound);
+$('gResume').addEventListener('click', resume);
+
+/* only animate while this tab is on screen; pause if you swipe away mid-round */
+new IntersectionObserver(entries=>{
+  visible = entries[0].isIntersecting;
+  if(visible){ resize(); startLoop(); } else { pause(); stopLoop(); }
+},{threshold:0.6}).observe(document.getElementById('pageGame'));
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) pause(); });
+})();
+</script>
+<script>
+/* offline support: cache the app so it opens with no signal */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
